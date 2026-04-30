@@ -1,38 +1,19 @@
 {
-  "name": "warranty-audit-pro",
+  "name": "warranty-audit",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "workspaces": ["apps/*"],
   "scripts": {
-    "dev": "tsx server.ts",
-    "build": "prisma generate && tsc && vite build",
-    "preview": "vite preview",
-    "lint": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@google/genai": "^1.38.0",
-    "@prisma/client": "^5.22.0",
-    "@tailwindcss/vite": "^4.2.1",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^4.17.25",
-    "cors": "^2.8.6",
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1",
-    "framer-motion": "^12.29.2",
-    "lucide-react": "^0.563.0",
-    "prisma": "^5.22.0",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "react-router-dom": "^7.13.0",
-    "recharts": "^3.7.0",
-    "tailwindcss": "^4.2.1",
-    "tsx": "^4.21.0",
-    "zustand": "^5.0.10"
+    "dev:api": "npm -w apps/api run dev",
+    "dev:web": "npm -w apps/web run dev",
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "build": "npm -w apps/api run build && npm -w apps/web run build",
+    "db:generate": "npm -w apps/api run db:generate",
+    "db:migrate": "npm -w apps/api run db:migrate",
+    "db:seed": "npm -w apps/api run db:seed",
+    "db:studio": "npm -w apps/api run db:studio"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "concurrently": "^9.0.0",
+    "typescript": "~5.8.2"
   }
 }
