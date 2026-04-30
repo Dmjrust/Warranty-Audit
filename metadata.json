@@ -1,0 +1,7 @@
+{
+  "name": "Warranty Audit Pro",
+  "description": "An advanced truck warranty audit system designed to elevate claim approval rates using intelligent scoring and rules-based validation.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("SQLITE_URL")
+}
+
+model Manufacturer {
+  id        String           @id @default(uuid())
+  code      String           @unique
+  name      String
+  status    String           @default("ACTIVE")
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  templates PolicyTemplate[]
+  tenants   Tenant[]
+}
+
+model PolicyTemplate {
+  id             String          @id @default(uuid())
+  manufacturerId String
+  manufacturer   Manufacturer    @relation(fields: [manufacturerId], references: [id])
+  code           String          @unique
+  name           String
+  description    String?
+  status         String          @default("ACTIVE")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  versions       PolicyVersion[]
+}
+
+model PolicyVersion {
+  id               String           @id @default(uuid())
+  policyTemplateId String
+  template         PolicyTemplate   @relation(fields: [policyTemplateId], references: [id])
+  versionCode      String
+  status           String           @default("DRAFT") // DRAFT, ACTIVE, ARCHIVED
+  effectiveFrom    DateTime?
+  effectiveTo      DateTime?
+  schemaJson       String           // Actual JSON structure
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  publishedAt      DateTime?
+  publishedBy      String?
+  processes        ProcessInstance[]
+}
+
+model Tenant {
+  id                      String        @id @default(uuid())
+  name                    String
+  manufacturerId          String?
+  manufacturer            Manufacturer? @relation(fields: [manufacturerId], references: [id])
+  activePolicyTemplateId String?
+  activePolicyVersionId  String?
+  status                  String        @default("ACTIVE")
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+}
+
+model ProcessInstance {
+  id                 String        @id @default(uuid())
+  tenantId           String
+  policyVersionId    String
+  policyVersion      PolicyVersion @relation(fields: [policyVersionId], references: [id])
+  status             String        @default("DRAFT")
+  currentStep        String        @default("VEHICLE")
+  vehicleDataJson    String?
+  checklistDataJson  String?
+  analysisDataJson   String?
+  scoringResultJson  String?
+  decisionResultJson String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+}
