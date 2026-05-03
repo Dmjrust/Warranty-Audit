@@ -32,6 +32,7 @@ export function ProcessWizard({
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(initialStep);
   const [sdScore, setSdScore] = useState<number>(0);
+  const [stScore, setStScore] = useState<number | null>(null);
   const [done, setDone] = useState(false);
 
   const stepIndex = STEPS.findIndex((s) => s.id === currentStep);
@@ -45,7 +46,10 @@ export function ProcessWizard({
     setCurrentStep('ANALYSIS');
   }
 
-  function handleStep3Saved() {
+  function handleStep3Saved(result: any) {
+    if (result?.aiResult?.scoreTecnico != null) {
+      setStScore(result.aiResult.scoreTecnico);
+    }
     setCurrentStep('VERDICT');
   }
 
@@ -132,6 +136,7 @@ export function ProcessWizard({
             token={token}
             processId={processId}
             sdScore={sdScore}
+            stScore={stScore}
             onSaved={handleStep4Saved}
           />
         )}

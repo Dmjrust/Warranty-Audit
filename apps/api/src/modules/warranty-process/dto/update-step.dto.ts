@@ -51,6 +51,9 @@ export class UpdateAnalysisStepDto {
 }
 
 export class UpdateVerdictStepDto {
-  scoreSt: number | null;
-  scoreSh: number;
+  @IsOptional()
+  scoreSt?: number | null;
+
+  @IsOptional()
+  scoreSh?: number | null;
 }

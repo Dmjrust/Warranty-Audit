@@ -39,6 +39,12 @@ export class WarrantyProcessController {
     return this.processService.findAll(req.user.tenantId, { status });
   }
 
+  // GET /api/processes/history-score
+  @Get('history-score')
+  getHistoryScore(@Request() req: any) {
+    return this.processService.getHistoryScore(req.user.tenantId);
+  }
+
   // GET /api/processes/:id
   @Get(':id')
   findOne(@Param('id') id: string, @Request() req: any) {

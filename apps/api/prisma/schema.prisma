@@ -142,17 +142,18 @@ model Score {
 // ─── RAG Knowledge Base ───────────────────────────────────────────────────────
 
 model RagDocument {
-  id             String       @id @default(uuid())
+  id             String                        @id @default(uuid())
   manufacturerId String
-  manufacturer   Manufacturer @relation(fields: [manufacturerId], references: [id])
+  manufacturer   Manufacturer                  @relation(fields: [manufacturerId], references: [id])
   tenantId       String?
   fonte          String
   sistema        String
   modeloVeiculo  String?
   titulo         String
   conteudo       String
+  embedding      Unsupported("vector(1536)")?
   metadados      String?
-  criadoEm       DateTime     @default(now())
+  criadoEm       DateTime                      @default(now())
   vigenteAte     DateTime?
 
   @@map("rag_documents")

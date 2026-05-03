@@ -1,9 +1,11 @@
 import {
-  Injectable, NotFoundException, ForbiddenException, BadRequestException,
+  Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { PolicyEngineService } from '@/modules/policy-engine/policy-engine.service';
 import { DeterministicScoreService } from '@/modules/policy-engine/deterministic-score.service';
+import { AiAnalysisService } from '@/modules/ai-analysis/ai-analysis.service';
+import { HistoryScoreService } from '@/modules/history-score/history-score.service';
 import { CreateProcessDto } from './dto/create-process.dto';
 import {
   UpdateVehicleStepDto,
@@ -14,10 +16,14 @@ import {
 
 @Injectable()
 export class WarrantyProcessService {
+  private readonly logger = new Logger(WarrantyProcessService.name);
+
   constructor(
     private prisma: PrismaService,
     private policyEngine: PolicyEngineService,
     private deterministicScore: DeterministicScoreService,
+    private aiAnalysis: AiAnalysisService,
+    private historyScore: HistoryScoreService,
   ) {}
 
   async create(tenantId: string, dto: CreateProcessDto) {
@@ -125,24 +131,64 @@ export class WarrantyProcessService {
 
   async saveAnalysisStep(id: string, tenantId: string, dto: UpdateAnalysisStepDto) {
     const process = await this.getOwnedProcess(id, tenantId);
+    const { schema, version } = await this.policyEngine.getPolicyVersion(process.policyVersionId);
 
-    if (!dto.imageUrls?.length) {
-      const { schema } = await this.policyEngine.getPolicyVersion(process.policyVersionId);
-      if (schema.passo3_analise_tecnica.requer_imagem) {
-        throw new BadRequestException('Ao menos uma imagem de evidencia e obrigatoria para esta montadora');
-      }
+    if (!dto.imageUrls?.length && schema.passo3_analise_tecnica.requer_imagem) {
+      throw new BadRequestException('Ao menos uma imagem de evidencia e obrigatoria para esta montadora');
     }
+
+    // Resolve manufacturer for RAG context
+    const policyVersion = await this.prisma.policyVersion.findUnique({
+      where: { id: process.policyVersionId },
+      include: { template: { include: { manufacturer: true } } },
+    });
+    const manufacturer = policyVersion?.template?.manufacturer;
+
+    const vehicleData = process.vehicleDataJson ? JSON.parse(process.vehicleDataJson) : {};
+
+    // Run AI analysis — never blocks the workflow if it fails
+    let aiResult: any = null;
+    try {
+      aiResult = await this.aiAnalysis.analyze({
+        montadoraId: manufacturer?.id ?? '',
+        montadoraNome: manufacturer?.name ?? '',
+        modeloVeiculo: vehicleData.modelo ?? '',
+        anoFabricacao: vehicleData.anoFabricacao,
+        hodometro: vehicleData.hodometro,
+        sistema: vehicleData.sistema ?? '',
+        codigosFalha: vehicleData.codigosFalha,
+        sintomas: dto.sintomas,
+        inspecaoInicial: dto.inspecaoInicial,
+        testesRealizados: dto.testesRealizados,
+        causaRaiz: dto.causaRaiz,
+        historicoIntervencoes: dto.historicoIntervencoes,
+        imageUrls: dto.imageUrls,
+      });
+    } catch (err: any) {
+      this.logger.warn(`AI analysis skipped for process ${id}: ${err.message}`);
+    }
+
+    const analysisData = { ...dto, aiResult };
 
     const updated = await this.prisma.processInstance.update({
       where: { id },
       data: {
-        analysisDataJson: JSON.stringify(dto),
+        analysisDataJson: JSON.stringify(analysisData),
         currentStep: 'VERDICT',
         status: 'PENDING_APPROVAL',
       },
     });
 
-    return { processId: id, currentStep: updated.currentStep };
+    return {
+      processId: id,
+      currentStep: updated.currentStep,
+      aiResult,
+    };
+  }
+
+  async getHistoryScore(tenantId: string): Promise<{ scoreSh: number }> {
+    const scoreSh = await this.historyScore.calculate(tenantId);
+    return { scoreSh };
   }
 
   async saveVerdictStep(id: string, tenantId: string, dto: UpdateVerdictStepDto) {
@@ -153,22 +199,38 @@ export class WarrantyProcessService {
       ? JSON.parse(process.checklistDataJson)
       : { sdResult: { score: 0, bloqueantes: [], regrasAplicadas: [] } };
 
+    const analysisData = process.analysisDataJson ? JSON.parse(process.analysisDataJson) : {};
+
     const sd = checklistData.sdResult?.score ?? 0;
     const bloqueantes = checklistData.sdResult?.bloqueantes ?? [];
 
-    const scoreFinal = this.deterministicScore.calculateComposite(sd, dto.scoreSt, dto.scoreSh, schema);
+    // Prefer AI-derived ST if not explicitly overridden in dto
+    const scoreSt = dto.scoreSt ?? analysisData.aiResult?.scoreTecnico ?? null;
+
+    // Auto-calculate SH if not provided
+    let scoreSh = dto.scoreSh;
+    if (scoreSh == null) {
+      scoreSh = await this.historyScore.calculate(process.tenantId);
+    }
+
+    const scoreFinal = this.deterministicScore.calculateComposite(sd, scoreSt, scoreSh, schema);
     const decision = this.deterministicScore.getDecision(scoreFinal, schema, bloqueantes);
+
+    const ragChunksUsed = analysisData.aiResult?.ragChunkIds
+      ? JSON.stringify(analysisData.aiResult.ragChunkIds)
+      : null;
 
     const score = await this.prisma.score.create({
       data: {
         processId: id,
         policyVersionId: process.policyVersionId,
         scoreSd: sd,
-        scoreSt: dto.scoreSt,
-        scoreSh: dto.scoreSh,
+        scoreSt: scoreSt,
+        scoreSh: scoreSh,
         scoreFinal,
         decision: decision.decision,
         rulesApplied: JSON.stringify(checklistData.sdResult?.regrasAplicadas ?? []),
+        ragChunksUsed,
       },
     });
 
@@ -177,7 +239,7 @@ export class WarrantyProcessService {
       data: {
         status: decision.canSubmit ? 'APPROVED' : 'PENDING_APPROVAL',
         currentStep: 'VERDICT',
-        scoringResultJson: JSON.stringify({ sd, st: dto.scoreSt, sh: dto.scoreSh, final: scoreFinal }),
+        scoringResultJson: JSON.stringify({ sd, st: scoreSt, sh: scoreSh, final: scoreFinal }),
         decisionResultJson: JSON.stringify(decision),
       },
     });
@@ -186,8 +248,8 @@ export class WarrantyProcessService {
       processId: id,
       status: updated.status,
       scoreSd: sd,
-      scoreSt: dto.scoreSt,
-      scoreSh: dto.scoreSh,
+      scoreSt: scoreSt,
+      scoreSh: scoreSh,
       scoreFinal,
       decision,
       scoreId: score.id,

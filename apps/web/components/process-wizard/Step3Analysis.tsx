@@ -2,12 +2,35 @@
 
 import { useState } from 'react';
 
+interface AiResult {
+  scoreTecnico: number | null;
+  consistencia: string | null;
+  pontosFortes: string[];
+  lacunas: string[];
+  recomendacoes: string[];
+  justificativaTecnica: string | null;
+  nivelConfianca: string | null;
+  error?: string;
+}
+
 interface Props {
   token: string;
   processId: string;
   initialData?: any;
   onSaved: (result: any) => void;
 }
+
+const CONSISTENCIA_MAP: Record<string, { label: string; color: string }> = {
+  aprovado:     { label: 'Diagnóstico consistente', color: 'text-emerald-400' },
+  inconsistente: { label: 'Diagnóstico inconsistente', color: 'text-orange-400' },
+  insuficiente:  { label: 'Diagnóstico insuficiente', color: 'text-red-400' },
+};
+
+const CONFIANCA_MAP: Record<string, string> = {
+  alto:  'text-emerald-400',
+  medio: 'text-yellow-400',
+  baixo: 'text-red-400',
+};
 
 export function Step3Analysis({ token, processId, initialData, onSaved }: Props) {
   const [form, setForm] = useState({
@@ -21,6 +44,7 @@ export function Step3Analysis({ token, processId, initialData, onSaved }: Props)
   const [imageUrls, setImageUrls] = useState<string[]>(initialData?.imageUrls ?? []);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [aiResult, setAiResult] = useState<AiResult | null>(null);
   const [error, setError] = useState('');
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -45,10 +69,15 @@ export function Step3Analysis({ token, processId, initialData, onSaved }: Props)
     e.preventDefault();
     setSaving(true);
     setError('');
+    setAiResult(null);
     try {
       const { processApi } = await import('@/lib/process-api');
       const result = await processApi.saveAnalysis(token, processId, { ...form, imageUrls });
-      onSaved(result);
+      if (result.aiResult) {
+        setAiResult(result.aiResult);
+      } else {
+        onSaved(result);
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -71,6 +100,96 @@ export function Step3Analysis({ token, processId, initialData, onSaved }: Props)
       />
     </div>
   );
+
+  if (aiResult) {
+    const consistencia = aiResult.consistencia ? CONSISTENCIA_MAP[aiResult.consistencia] : null;
+    const confiancaColor = aiResult.nivelConfianca ? CONFIANCA_MAP[aiResult.nivelConfianca] : 'text-gray-400';
+
+    return (
+      <div className="space-y-5">
+        <div className="bg-blue-950/30 border border-blue-800 rounded-xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-white">Análise da IA — GPT-4o</h3>
+            {aiResult.nivelConfianca && (
+              <span className={`text-xs font-medium ${confiancaColor}`}>
+                Confiança: {aiResult.nivelConfianca}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-4 mb-4">
+            <div className="text-center">
+              <p className="text-xs text-gray-500 mb-1">Score Técnico</p>
+              <p className={`text-4xl font-bold ${
+                (aiResult.scoreTecnico ?? 0) >= 75 ? 'text-emerald-400' :
+                (aiResult.scoreTecnico ?? 0) >= 50 ? 'text-yellow-400' : 'text-red-400'
+              }`}>
+                {aiResult.scoreTecnico ?? '—'}
+              </p>
+            </div>
+            {consistencia && (
+              <p className={`text-sm font-medium ${consistencia.color}`}>
+                {consistencia.label}
+              </p>
+            )}
+          </div>
+
+          {aiResult.error && (
+            <p className="text-xs text-yellow-400 mb-3">
+              Análise automática indisponível: {aiResult.error}
+            </p>
+          )}
+
+          {aiResult.pontosFortes.length > 0 && (
+            <div className="mb-3">
+              <p className="text-xs text-emerald-500 font-medium mb-1">Pontos fortes</p>
+              <ul className="space-y-0.5">
+                {aiResult.pontosFortes.map((p, i) => (
+                  <li key={i} className="text-xs text-gray-300">✓ {p}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {aiResult.lacunas.length > 0 && (
+            <div className="mb-3">
+              <p className="text-xs text-orange-400 font-medium mb-1">Lacunas identificadas</p>
+              <ul className="space-y-0.5">
+                {aiResult.lacunas.map((l, i) => (
+                  <li key={i} className="text-xs text-gray-300">⚠ {l}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {aiResult.recomendacoes.length > 0 && (
+            <div className="mb-3">
+              <p className="text-xs text-blue-400 font-medium mb-1">Recomendações</p>
+              <ul className="space-y-0.5">
+                {aiResult.recomendacoes.map((r, i) => (
+                  <li key={i} className="text-xs text-gray-300">→ {r}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {aiResult.justificativaTecnica && (
+            <div className="mt-3 pt-3 border-t border-blue-800/50">
+              <p className="text-xs text-gray-500 font-medium mb-1">Justificativa técnica gerada</p>
+              <p className="text-xs text-gray-300 leading-relaxed">{aiResult.justificativaTecnica}</p>
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={() => onSaved({ aiResult })}
+          className="btn-primary w-full"
+        >
+          Continuar para o Veredito →
+        </button>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
@@ -144,7 +263,7 @@ export function Step3Analysis({ token, processId, initialData, onSaved }: Props)
       )}
 
       <button type="submit" disabled={saving || uploading} className="btn-primary w-full">
-        {saving ? 'Salvando análise...' : 'Salvar e continuar →'}
+        {saving ? 'Salvando e analisando com IA...' : 'Salvar e analisar →'}
       </button>
     </form>
   );

@@ -58,8 +58,11 @@ export const processApi = {
   saveAnalysis: (token: string, id: string, data: object) =>
     req('PATCH', `/processes/${id}/analysis`, token, data),
 
-  saveVerdict: (token: string, id: string, data: { scoreSt: number | null; scoreSh: number }) =>
+  saveVerdict: (token: string, id: string, data: { scoreSt?: number | null; scoreSh?: number | null }) =>
     req('PATCH', `/processes/${id}/verdict`, token, data),
+
+  getHistoryScore: (token: string): Promise<{ scoreSh: number }> =>
+    req('GET', '/processes/history-score', token),
 
   getChecklist: (token: string, policyVersionId: string): Promise<{ items: ChecklistItem[] }> =>
     req('GET', `/policies/${policyVersionId}/checklist`, token),

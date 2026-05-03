@@ -7,9 +7,9 @@ O Claude Code le este arquivo ao iniciar cada nova sessao para recuperar o conte
 
 ## Estado Atual
 
-**Fase:** Fase 3 (Workflow de Auditoria) -- CONCLUIDA
+**Fase:** Fase 4 (IA + Scoring) -- CONCLUIDA
 **Data:** 2026-04-30
-**Proxima fase:** Fase 4 -- IA + Scoring (GPT-4o + RAG + Score Historico)
+**Proxima fase:** Fase 5 -- Dashboard + Notificacoes (BullMQ + Redis)
 
 ---
 
@@ -37,6 +37,19 @@ O Claude Code le este arquivo ao iniciar cada nova sessao para recuperar o conte
 - ProcessList: tabela com status, SLA badges, score
 - Rotas: /processes, /processes/new, /processes/:id
 
+### Fase 4 -- IA + Scoring
+- AiAnalysisModule: GPT-4o + system prompt fixo (CLAUDE.md) + pipeline RAG
+- EmbeddingService: text-embedding-3-small (OpenAI)
+- RagEngineService: busca vetorial pgvector + reranking por prioridade de fonte
+- Gpt4oService: temperatura 0.2 fixo, response_format json_object, ST cap 80 sem imagem
+- HistoryScoreService: aprovacoes / total nos ultimos 12 meses (min 20, max 95, neutral 65 se <5)
+- Migration SQL: embedding vector(1536) + ivfflat index no rag_documents
+- saveAnalysisStep atualizado: chama IA apos salvar, armazena aiResult no analysisDataJson
+- saveVerdictStep atualizado: usa ST da IA, calcula SH automatico se nao informado
+- GET /api/processes/history-score: retorna SH do tenant autenticado
+- Step3Analysis: exibe resultado IA (score, consistencia, lacunas, justificativa) antes de avancar
+- Step4Verdict: busca SH automatico na montagem, exibe ST real da IA, formula correta no resultado
+
 ## Usuarios de teste
 
 | Email | Senha | Perfil |
@@ -47,18 +60,11 @@ O Claude Code le este arquivo ao iniciar cada nova sessao para recuperar o conte
 
 ---
 
-## Fase 4 -- IA + Scoring (proxima)
+## Fase 5 -- Dashboard + Notificacoes (proxima)
 
 Tasks:
-- [ ] Modulo ai-analysis no NestJS (GPT-4o + system prompt fixo)
-- [ ] EmbeddingService -- text-embedding-3-small
-- [ ] RagEngineService -- busca vetorial pgvector + reranking
-- [ ] HistoryScoreService -- SH estatistico por tenant
-- [ ] Integrar ST no Passo 3 (apos salvar analise tecnica)
-- [ ] Substituir SH manual no Step4Verdict pelo valor calculado
-
-## Fase 5 -- Dashboard + Notificacoes
-
-- [ ] Dashboard com dados reais (KPIs calculados)
+- [ ] Dashboard com dados reais (KPIs: processos por status, score medio, taxa aprovacao)
+- [ ] Grafico de evolucao temporal (aprovacoes por mes)
 - [ ] BullMQ + Redis para alertas SLA
-- [ ] Regua Amarelo -> Laranja -> Vermelho
+- [ ] Regua Amarelo -> Laranja -> Vermelho por perfil
+- [ ] Notificacoes in-app (polling ou SSE)

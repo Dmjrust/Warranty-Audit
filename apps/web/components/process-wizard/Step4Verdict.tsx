@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface Props {
   token: string;
   processId: string;
   sdScore: number;
+  stScore?: number | null;
   onSaved: (result: any) => void;
 }
 
@@ -16,24 +17,36 @@ const DECISION_MAP: Record<string, { label: string; color: string; icon: string 
   nao_submeter: { label: 'Não submeter — corrija as pendências', color: 'text-red-400', icon: '❌' },
 };
 
-export function Step4Verdict({ token, processId, sdScore, onSaved }: Props) {
-  const [scoreSh, setScoreSh] = useState(70);
-  const [scoreSt, setScoreSt] = useState<number | null>(null);
+export function Step4Verdict({ token, processId, sdScore, stScore, onSaved }: Props) {
+  const [scoreSh, setScoreSh] = useState<number | null>(null);
+  const [loadingSh, setLoadingSh] = useState(true);
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [finalizing, setFinalizing] = useState(false);
+
+  useEffect(() => {
+    async function fetchSh() {
+      try {
+        const { processApi } = await import('@/lib/process-api');
+        const { scoreSh: sh } = await processApi.getHistoryScore(token);
+        setScoreSh(sh);
+      } catch {
+        setScoreSh(65);
+      } finally {
+        setLoadingSh(false);
+      }
+    }
+    fetchSh();
+  }, [token]);
 
   async function handleCalculate() {
     setLoading(true);
     try {
-      // ST=null neste MVP (sem IA ainda) — Fase 4 preencherá
       const { processApi } = await import('@/lib/process-api');
       const res = await processApi.saveVerdict(token, processId, {
-        scoreSt: null,
-        scoreSh,
+        scoreSt: stScore ?? null,
+        scoreSh: scoreSh ?? undefined,
       });
       setResult(res);
-      setScoreSt(null);
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -46,51 +59,77 @@ export function Step4Verdict({ token, processId, sdScore, onSaved }: Props) {
   }
 
   const decision = result ? DECISION_MAP[result.decision?.decision] : null;
+  const stDisplay = stScore != null ? stScore : result?.scoreSt ?? null;
 
   return (
     <div className="space-y-6">
-      {/* Score inputs */}
+      {/* Score cards */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 text-center">
           <p className="text-xs text-gray-400 mb-1">Score Determinístico (SD)</p>
           <p className="text-3xl font-bold text-white">{sdScore}</p>
           <p className="text-xs text-gray-500 mt-1">Calculado pelo checklist</p>
         </div>
+
         <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 text-center">
           <p className="text-xs text-gray-400 mb-1">Score Técnico IA (ST)</p>
-          <p className="text-3xl font-bold text-gray-500">—</p>
-          <p className="text-xs text-gray-500 mt-1">Disponível na Fase 4</p>
+          {stDisplay != null ? (
+            <>
+              <p className={`text-3xl font-bold ${
+                stDisplay >= 75 ? 'text-emerald-400' :
+                stDisplay >= 50 ? 'text-yellow-400' : 'text-red-400'
+              }`}>{stDisplay}</p>
+              <p className="text-xs text-gray-500 mt-1">Calculado pela IA</p>
+            </>
+          ) : (
+            <>
+              <p className="text-3xl font-bold text-gray-500">—</p>
+              <p className="text-xs text-gray-500 mt-1">Sem análise IA</p>
+            </>
+          )}
         </div>
+
         <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 text-center">
           <p className="text-xs text-gray-400 mb-2">Score Histórico (SH)</p>
-          <input
-            type="number"
-            min={20}
-            max={95}
-            value={scoreSh}
-            onChange={(e) => setScoreSh(Number(e.target.value))}
-            className="w-20 bg-gray-800 border border-gray-600 rounded text-center text-xl font-bold text-white py-1"
-          />
-          <p className="text-xs text-gray-500 mt-1">Histórico do tenant (20–95)</p>
+          {loadingSh ? (
+            <p className="text-3xl font-bold text-gray-500">...</p>
+          ) : (
+            <>
+              <input
+                type="number"
+                min={20}
+                max={95}
+                value={scoreSh ?? 65}
+                onChange={(e) => setScoreSh(Number(e.target.value))}
+                className="w-20 bg-gray-800 border border-gray-600 rounded text-center text-xl font-bold text-white py-1"
+              />
+              <p className="text-xs text-gray-500 mt-1">Baseado no histórico</p>
+            </>
+          )}
         </div>
       </div>
 
       {!result && (
-        <button onClick={handleCalculate} disabled={loading} className="btn-primary w-full">
+        <button
+          onClick={handleCalculate}
+          disabled={loading || loadingSh}
+          className="btn-primary w-full"
+        >
           {loading ? 'Calculando score final...' : 'Calcular veredito'}
         </button>
       )}
 
       {result && (
         <div className="space-y-4">
-          {/* Score final */}
           <div className="bg-gray-900 border border-gray-700 rounded-xl p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <p className="text-sm text-gray-400">Score Final Composto</p>
                 <p className="text-5xl font-bold text-white mt-1">{result.scoreFinal}</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  SD({result.scoreSd}) × 0.5 + ST(—) + SH({result.scoreSh}) × 0.2
+                  SD({result.scoreSd}) × 0.5
+                  {result.scoreSt != null ? ` + ST(${result.scoreSt}) × 0.3` : ' (ST ausente — peso redistribuído)'}
+                  {` + SH(${result.scoreSh}) × 0.2`}
                 </p>
               </div>
               <div className="text-right">
@@ -98,7 +137,6 @@ export function Step4Verdict({ token, processId, sdScore, onSaved }: Props) {
               </div>
             </div>
 
-            {/* Score bar */}
             <div className="h-3 bg-gray-800 rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-700 ${
@@ -118,7 +156,6 @@ export function Step4Verdict({ token, processId, sdScore, onSaved }: Props) {
             </div>
           </div>
 
-          {/* Decision */}
           <div className={`rounded-xl border p-5 ${
             result.decision?.decision === 'aprovado' ? 'border-emerald-800 bg-emerald-950/30' :
             result.decision?.decision === 'revisao' ? 'border-yellow-800 bg-yellow-950/30' :
@@ -130,12 +167,8 @@ export function Step4Verdict({ token, processId, sdScore, onSaved }: Props) {
             <p className="text-sm text-gray-300 mt-2">{result.decision?.motivo}</p>
           </div>
 
-          <button
-            onClick={handleFinalize}
-            disabled={finalizing}
-            className="btn-primary w-full"
-          >
-            {finalizing ? 'Finalizando...' : 'Concluir processo'}
+          <button onClick={handleFinalize} className="btn-primary w-full">
+            Concluir processo
           </button>
         </div>
       )}
