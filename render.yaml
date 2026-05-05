@@ -26,10 +26,7 @@ services:
           type: redis
           property: port
       - key: REDIS_PASSWORD
-        fromService:
-          name: warranty-redis
-          type: redis
-          property: password
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: API_PORT
