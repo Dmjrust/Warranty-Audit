@@ -21,7 +21,7 @@ export interface ChecklistItem {
   orientacao?: string;
 }
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+const API: string = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
 async function req(method: string, path: string, token: string, body?: unknown) {
   const res = await fetch(`${API}/api${path}`, {

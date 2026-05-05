@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+const API: string = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
 const TYPE_ICON: Record<string, string> = {
   SLA_YELLOW: '⚠️',

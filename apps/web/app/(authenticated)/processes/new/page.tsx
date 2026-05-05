@@ -20,7 +20,7 @@ export default async function NewProcessPage() {
   }
 
   // Create the process server-side before rendering the wizard
-  const API = process.env.API_URL ?? 'http://localhost:4000';
+  const API: string = process.env.API_URL ?? 'http://localhost:4000';
   const res = await fetch(`${API}/api/processes`, {
     method: 'POST',
     headers: {

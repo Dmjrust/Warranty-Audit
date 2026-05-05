@@ -26,7 +26,7 @@ export default async function ProcessesPage() {
   const user = session.user as any;
   const token: string = user.accessToken;
 
-  const API = process.env.API_URL ?? 'http://localhost:4000';
+  const API: string = process.env.API_URL ?? 'http://localhost:4000';
   const res = await fetch(`${API}/api/processes`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: 'no-store',
