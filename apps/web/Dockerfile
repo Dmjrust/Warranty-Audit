@@ -1,30 +1,33 @@
-# ─── Stage 1: Build ──────────────────────────────────────────────────────────
+# ── Stage 1: Build ────────────────────────────────────────────────────────────
+# Used for local Docker environments and staging.
+# Production runs on Vercel — this file is NOT used in the Vercel pipeline.
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Dependencies
+# Install dependencies first (layer cache)
 COPY package.json package-lock.json* ./
 RUN npm install
 
-# Build — Next.js needs env vars at build time for NEXT_PUBLIC_*
+# NEXT_PUBLIC_* vars must be present at build time
 ARG NEXT_PUBLIC_API_URL=http://localhost:4000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 COPY . .
 RUN npm run build
 
-# ─── Stage 2: Runtime ─────────────────────────────────────────────────────────
+# ── Stage 2: Runtime ──────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Next.js standalone output — minimal runtime footprint
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+# Copy build output and runtime deps
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
 
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-CMD ["node", "server.js"]
+CMD ["npm", "start"]

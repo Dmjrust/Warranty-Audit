@@ -1,5 +1,6 @@
 services:
   # ── API (NestJS) ──────────────────────────────────────────────────────────────
+  # Web frontend is deployed on Vercel — only the API lives on Render.
   - type: web
     name: warranty-api
     runtime: docker
@@ -24,10 +25,13 @@ services:
           name: warranty-redis
           type: redis
           property: port
+      - key: REDIS_PASSWORD
+        fromService:
+          name: warranty-redis
+          type: redis
+          property: password
       - key: JWT_SECRET
         generateValue: true
-      - key: NEXTAUTH_URL
-        sync: false
       - key: API_PORT
         value: "4000"
       - key: OPENAI_API_KEY
@@ -42,28 +46,6 @@ services:
         value: warranty-evidence
       - key: R2_PUBLIC_URL
         sync: false
-
-  # ── Web (Next.js) ─────────────────────────────────────────────────────────────
-  - type: web
-    name: warranty-web
-    runtime: docker
-    rootDir: apps/web
-    dockerfilePath: Dockerfile
-    plan: starter
-    buildArgs:
-      - key: NEXT_PUBLIC_API_URL
-        value: https://warranty-api.onrender.com
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: NEXTAUTH_URL
-        sync: false
-      - key: NEXTAUTH_SECRET
-        generateValue: true
-      - key: API_URL
-        value: https://warranty-api.onrender.com
-      - key: NEXT_PUBLIC_API_URL
-        value: https://warranty-api.onrender.com
 
 databases:
   - name: warranty-db
