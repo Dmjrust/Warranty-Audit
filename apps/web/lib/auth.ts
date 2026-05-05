@@ -47,10 +47,11 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (token && session.user) {
-        session.user.id = token.id as string;
-        (session.user as any).role = token.role;
-        (session.user as any).tenantId = token.tenantId;
-        (session.user as any).accessToken = token.accessToken;
+        const user = session.user as any;
+        user.id = token.id as string;
+        user.role = token.role;
+        user.tenantId = token.tenantId;
+        user.accessToken = token.accessToken;
       }
       return session;
     },
