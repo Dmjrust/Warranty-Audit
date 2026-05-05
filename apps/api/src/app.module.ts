@@ -10,6 +10,7 @@ import { StorageModule } from './modules/storage/storage.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { SlaModule } from './modules/sla/sla.module';
+import { HealthController } from './modules/health/health.controller';
 
 @Module({
   imports: [
@@ -33,5 +34,6 @@ import { SlaModule } from './modules/sla/sla.module';
     NotificationsModule,
     SlaModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}
