@@ -44,8 +44,13 @@ export function Step2Checklist({ token, processId, policyVersionId, onSaved }: P
         answer: answer as boolean,
       }));
       const result = await processApi.saveChecklist(token, processId, formatted);
-      setBloqueantes(result.bloqueantes ?? []);
-      if ((result.bloqueantes ?? []).length === 0) {
+      const found = result.bloqueantes ?? [];
+      setBloqueantes(found);
+      if (found.length > 0) {
+        // Show blocker warning for 2.5 s, then advance.
+        // The low SD already penalises the final score — the verdict step makes it explicit.
+        setTimeout(() => onSaved(result), 2500);
+      } else {
         onSaved(result);
       }
     } catch (err: any) {

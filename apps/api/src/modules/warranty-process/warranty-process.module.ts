@@ -5,12 +5,11 @@ import { PolicyEngineModule } from '@/modules/policy-engine/policy-engine.module
 import { StorageModule } from '@/modules/storage/storage.module';
 import { AiAnalysisModule } from '@/modules/ai-analysis/ai-analysis.module';
 import { HistoryScoreModule } from '@/modules/history-score/history-score.module';
-import { PrismaService } from '@/prisma/prisma.service';
 
 @Module({
   imports: [PolicyEngineModule, StorageModule, AiAnalysisModule, HistoryScoreModule],
   controllers: [WarrantyProcessController],
-  providers: [WarrantyProcessService, PrismaService],
+  providers: [WarrantyProcessService],
   exports: [WarrantyProcessService],
 })
 export class WarrantyProcessModule {}

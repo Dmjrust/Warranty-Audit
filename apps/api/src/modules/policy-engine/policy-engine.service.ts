@@ -202,14 +202,12 @@ export class PolicyEngineService {
 
   getSLAStatus(deadline: Date): 'green' | 'yellow' | 'orange' | 'red' {
     const now = new Date();
-    const msRemaining = deadline.getTime() - now.getTime();
-    const hoursRemaining = msRemaining / (1000 * 60 * 60);
-    const totalHours = 24 * 30; // approx from prazo_abertura_dias default
-    const pctRemaining = msRemaining / (totalHours * 60 * 60 * 1000);
+    const hoursRemaining = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-    if (hoursRemaining <= 0) return 'red';
+    // Thresholds must match SlaProcessor.computeSlaStatus exactly
+    if (hoursRemaining <= 24) return 'red';
     if (hoursRemaining <= 48) return 'orange';
-    if (pctRemaining <= 0.3) return 'yellow';
+    if (hoursRemaining <= 96) return 'yellow';
     return 'green';
   }
 }
