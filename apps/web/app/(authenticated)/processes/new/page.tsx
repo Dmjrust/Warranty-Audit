@@ -40,14 +40,14 @@ export default async function NewProcessPage() {
     );
   }
 
-  const process = await res.json();
+  const newProcess = await res.json();
 
   return (
     <div className="p-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-white">Novo Processo de Auditoria</h2>
-          <p className="text-xs text-gray-500 mt-0.5">#{process.id.slice(0, 8)}</p>
+          <p className="text-xs text-gray-500 mt-0.5">#{newProcess.id.slice(0, 8)}</p>
         </div>
         <a href="/processes" className="text-sm text-gray-400 hover:text-white transition-colors">
           ← Voltar
@@ -56,8 +56,8 @@ export default async function NewProcessPage() {
 
       <ProcessWizard
         token={token}
-        processId={process.id}
-        policyVersionId={process.policyVersion?.id}
+        processId={newProcess.id}
+        policyVersionId={newProcess.policyVersion?.id}
         initialStep="VEHICLE"
       />
     </div>
