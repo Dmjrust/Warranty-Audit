@@ -1,7 +1,7 @@
 import NextAuth, { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
-const API_URL = process.env.API_URL ?? 'http://localhost:4000';
+const API_URL: string = process.env.API_URL ?? 'http://localhost:4000';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -46,7 +46,7 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      if (token) {
+      if (token && session.user) {
         session.user.id = token.id as string;
         (session.user as any).role = token.role;
         (session.user as any).tenantId = token.tenantId;
