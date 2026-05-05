@@ -2,6 +2,9 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# Install system dependencies required by Prisma
+RUN apk add --no-cache openssl
+
 # Install dependencies first (cache-friendly layer)
 COPY package.json package-lock.json* ./
 RUN npm install
@@ -19,6 +22,9 @@ RUN npx nest build
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+
+# Install system dependencies required by Prisma
+RUN apk add --no-cache openssl
 
 # Only production dependencies
 COPY package.json package-lock.json* ./
