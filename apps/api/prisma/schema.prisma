@@ -139,6 +139,21 @@ model Score {
   @@map("scores")
 }
 
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(uuid())
+  tenantId  String
+  processId String?
+  type      String   // 'SLA_YELLOW' | 'SLA_ORANGE' | 'SLA_RED'
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, read])
+  @@map("notifications")
+}
+
 // ─── RAG Knowledge Base ───────────────────────────────────────────────────────
 
 model RagDocument {
