@@ -3,6 +3,7 @@ import {
   UseGuards, Request, UploadedFiles, UseInterceptors,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
+import type { Multer } from 'multer';
 import { WarrantyProcessService } from './warranty-process.service';
 import { StorageService } from '@/modules/storage/storage.service';
 import { AuthGuard } from '@/modules/auth/guards/auth.guard';
@@ -97,7 +98,7 @@ export class WarrantyProcessController {
   @UseInterceptors(FilesInterceptor('files', 10))
   async uploadImages(
     @Param('id') id: string,
-    @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFiles() files: Multer.File[],
   ) {
     const urls = await Promise.all(
       files.map((f) => this.storageService.upload(f.buffer, f.originalname, f.mimetype)),
