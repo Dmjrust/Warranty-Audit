@@ -12,7 +12,7 @@ export default async function EditProcessPage({ params }: Props) {
   const user = session.user as any;
   const token: string = user.accessToken;
 
-  const API = process.env.API_URL ?? 'http://localhost:4000';
+  const API: string = process.env.API_URL ?? 'http://localhost:4000';
   const res = await fetch(`${API}/api/processes/${params.id}`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: 'no-store',
@@ -22,11 +22,11 @@ export default async function EditProcessPage({ params }: Props) {
     return <div className="p-6 text-red-400">Processo não encontrado.</div>;
   }
 
-  const process = await res.json();
+  const processData = await res.json();
 
   // Redirect completed processes to read-only summary
   const finalStatuses = ['APPROVED', 'REJECTED', 'SUBMITTED'];
-  const isEditable = !finalStatuses.includes(process.status);
+  const isEditable = !finalStatuses.includes(processData.status);
 
   return (
     <div className="p-6">
@@ -36,7 +36,7 @@ export default async function EditProcessPage({ params }: Props) {
             {isEditable ? 'Continuar Processo' : 'Processo Concluído'}
           </h2>
           <p className="text-xs text-gray-500 mt-0.5">
-            #{process.id.slice(0, 8)} — {process.policyVersion?.manufacturer?.name}
+            #{processData.id.slice(0, 8)} — {processData.policyVersion?.manufacturer?.name}
           </p>
         </div>
         <a href="/processes" className="text-sm text-gray-400 hover:text-white transition-colors">
@@ -47,37 +47,37 @@ export default async function EditProcessPage({ params }: Props) {
       {isEditable ? (
         <ProcessWizard
           token={token}
-          processId={process.id}
-          policyVersionId={process.policyVersion?.id}
-          initialStep={process.currentStep}
+          processId={processData.id}
+          policyVersionId={processData.policyVersion?.id}
+          initialStep={processData.currentStep}
           initialData={{
-            vehicleData: process.vehicleData,
-            checklistData: process.checklistData,
-            analysisData: process.analysisData,
+            vehicleData: processData.vehicleData,
+            checklistData: processData.checklistData,
+            analysisData: processData.analysisData,
           }}
         />
       ) : (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
           <div className="flex items-center gap-3">
             <span className="text-3xl">
-              {process.decisionResult?.decision === 'aprovado' ? '✅' : '⚠️'}
+              {processData.decisionResult?.decision === 'aprovado' ? '✅' : '⚠️'}
             </span>
             <div>
               <p className="font-semibold text-white">
-                {process.decisionResult?.decision === 'aprovado'
+                {processData.decisionResult?.decision === 'aprovado'
                   ? 'Aprovado para submissão'
                   : 'Processo encerrado'}
               </p>
-              <p className="text-sm text-gray-400">{process.decisionResult?.motivo}</p>
+              <p className="text-sm text-gray-400">{processData.decisionResult?.motivo}</p>
             </div>
           </div>
-          {process.scoringResult && (
+          {processData.scoringResult && (
             <div className="grid grid-cols-4 gap-3 pt-3 border-t border-gray-800">
               {[
-                { label: 'Score Final', value: process.scoringResult.final },
-                { label: 'SD', value: process.scoringResult.sd },
-                { label: 'ST', value: process.scoringResult.st ?? '—' },
-                { label: 'SH', value: process.scoringResult.sh },
+                { label: 'Score Final', value: processData.scoringResult.final },
+                { label: 'SD', value: processData.scoringResult.sd },
+                { label: 'ST', value: processData.scoringResult.st ?? '—' },
+                { label: 'SH', value: processData.scoringResult.sh },
               ].map(({ label, value }) => (
                 <div key={label} className="text-center">
                   <p className="text-xs text-gray-500">{label}</p>
